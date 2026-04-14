@@ -18,17 +18,20 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
+    # Save temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
         image.save(tmp.name)
 
+        # Run detection
         results = model(tmp.name, conf=0.25, iou=0.5)
 
         for r in results:
             boxes = r.boxes
 
             if boxes is not None and len(boxes) > 0:
-                best_length = 0
+                st.success(f"Total scratches detected: {len(boxes)}")
 
+                count = 1
                 for box in boxes:
                     x1, y1, x2, y2 = box.xyxy[0]
 
@@ -37,11 +40,11 @@ if uploaded_file is not None:
 
                     length = max(width, height)
 
-                    if length > best_length:
-                        best_length = length
+                    st.write(f"Scratch {count} length: {int(length)} pixels")
+                    count += 1
 
-                st.success(f"Defect length (pixels): {int(best_length)}")
             else:
                 st.warning("No scratches detected in this image")
 
+            # Show detection result
             st.image(r.plot(), caption="Detected Image", use_column_width=True)
