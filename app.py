@@ -3,25 +3,33 @@ from ultralytics import YOLO
 from PIL import Image
 import tempfile
 
-st.title("Defect Detection App")
+st.title("Defect Detection + Length Measurement")
 
-# Load model
 model = YOLO("model.pt")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    # Show image
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image")
 
-    # Save temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
         image.save(tmp.name)
-        
-        # Run prediction
+
         results = model(tmp.name)
 
-        # Show results
         for r in results:
+            boxes = r.boxes
+
+            for box in boxes:
+                x1, y1, x2, y2 = box.xyxy[0]
+
+                width = x2 - x1
+                height = y2 - y1
+
+                # Approx length = max dimension
+                length = max(width, height)
+
+                st.write(f"Detected defect length (pixels): {int(length)}")
+
             st.image(r.plot(), caption="Detected Image")
