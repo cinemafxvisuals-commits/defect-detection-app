@@ -3,7 +3,7 @@ from ultralytics import YOLO
 from PIL import Image
 import tempfile
 
-st.title("Defect Detection + Length Measurement")
+st.title("Defect Detection + Length")
 
 model = YOLO("model.pt")
 
@@ -21,15 +21,17 @@ if uploaded_file is not None:
         for r in results:
             boxes = r.boxes
 
-            for box in boxes:
-                x1, y1, x2, y2 = box.xyxy[0]
+            if boxes is not None and len(boxes) > 0:
+                # 👉 TAKE ONLY BEST BOX (highest confidence)
+                best_box = boxes[0]
+
+                x1, y1, x2, y2 = best_box.xyxy[0]
 
                 width = x2 - x1
                 height = y2 - y1
 
-                # Approx length = max dimension
                 length = max(width, height)
 
-                st.write(f"Detected defect length (pixels): {int(length)}")
+                st.write(f"Defect length (pixels): {int(length)}")
 
             st.image(r.plot(), caption="Detected Image")
