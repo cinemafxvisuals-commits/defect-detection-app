@@ -5,8 +5,8 @@ import tempfile
 
 # Title
 st.title("Defect Detection using YOLOv8")
-st.subheader("Scratch Detection and Length Measurement")
-st.write("Upload a surface image to detect scratches and measure defect length.")
+st.subheader("Scratch Detection, Length & Severity Analysis")
+st.write("Upload an image to detect scratches, measure length, and analyze severity.")
 
 # Load model
 model = YOLO("model.pt")
@@ -29,7 +29,7 @@ if uploaded_file is not None:
             boxes = r.boxes
 
             if boxes is not None and len(boxes) > 0:
-                st.success(f"Total scratches detected: {len(boxes)}")
+                st.success(f"Total defects detected: {len(boxes)}")
 
                 count = 1
                 for box in boxes:
@@ -40,11 +40,26 @@ if uploaded_file is not None:
 
                     length = max(width, height)
 
-                    st.write(f"Scratch {count} length: {int(length)} pixels")
+                    # 🔥 Severity logic
+                    if length < 50:
+                        severity = "Low"
+                    elif length < 150:
+                        severity = "Medium"
+                    else:
+                        severity = "High"
+
+                    # Confidence
+                    conf = float(box.conf[0])
+
+                    st.write(f"Scratch {count}:")
+                    st.write(f"- Length: {int(length)} pixels")
+                    st.write(f"- Severity: {severity}")
+                    st.write(f"- Confidence: {conf:.2f}")
+
                     count += 1
 
             else:
                 st.warning("No scratches detected in this image")
 
-            # Show detection result
+            # Show detection image
             st.image(r.plot(), caption="Detected Image", use_column_width=True)
