@@ -3,33 +3,45 @@ from ultralytics import YOLO
 from PIL import Image
 import tempfile
 
-# Title
-st.title("Defect Detection using YOLOv8")
+# ---------------- CONFIG ----------------
+st.set_page_config(page_title="Defect Detection", layout="centered")
+
+st.title("🔍 Defect Detection using YOLOv8")
 st.subheader("Scratch Detection, Length & Severity Analysis")
 st.write("Upload an image to detect scratches, measure length, and analyze severity.")
 
-# Load model
-model = YOLO("model.pt")
+# ---------------- LOAD MODEL (CACHED) ----------------
+@st.cache_resource
+def load_model():
+    return YOLO("model.pt")
 
-# Upload file
-uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
+model = load_model()
+
+# ---------------- SCALE (IMPORTANT) ----------------
+# Adjust this based on your assumption or calibration
+PIXEL_TO_MM = 0.1  
+
+# ---------------- FILE UPLOAD ----------------
+uploaded_file = st.file_uploader("📤 Upload Image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    try:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="🖼 Uploaded Image", use_column_width=True)
 
-    # Save temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-        image.save(tmp.name)
+        # Save temp image
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+            image.save(tmp.name)
 
-        # Run detection
-        results = model(tmp.name, conf=0.25, iou=0.5)
+            # 🔥 Improved detection settings
+            with st.spinner("⏳ Detecting defects..."):
+                results = model(tmp.name, conf=0.15, iou=0.3)
 
         for r in results:
             boxes = r.boxes
 
             if boxes is not None and len(boxes) > 0:
-                st.success(f"Total defects detected: {len(boxes)}")
+                st.success(f"✅ Total scratches detected: {len(boxes)}")
 
                 count = 1
                 for box in boxes:
@@ -38,28 +50,34 @@ if uploaded_file is not None:
                     width = x2 - x1
                     height = y2 - y1
 
-                    length = max(width, height)
+                    # Convert to real-world length
+                    length_pixels = max(width, height)
+                    length_mm = length_pixels * PIXEL_TO_MM
 
-                    # 🔥 Severity logic
-                    if length < 50:
-                        severity = "Low"
-                    elif length < 150:
-                        severity = "Medium"
+                    # 🔥 Severity based on real length
+                    if length_mm < 5:
+                        severity = "🟢 Low"
+                    elif length_mm < 15:
+                        severity = "🟡 Medium"
                     else:
-                        severity = "High"
+                        severity = "🔴 High"
 
                     # Confidence
                     conf = float(box.conf[0])
 
-                    st.write(f"Scratch {count}:")
-                    st.write(f"- Length: {int(length)} pixels")
-                    st.write(f"- Severity: {severity}")
-                    st.write(f"- Confidence: {conf:.2f}")
+                    # Display results
+                    st.write(f"### Scratch {count}")
+                    st.write(f"- 📏 Length: {length_mm:.2f} mm")
+                    st.write(f"- ⚠️ Severity: {severity}")
+                    st.write(f"- 🎯 Confidence: {conf:.2f}")
 
                     count += 1
 
             else:
-                st.warning("No scratches detected in this image")
+                st.warning("⚠️ No scratches detected in this image")
 
-            # Show detection image
-            st.image(r.plot(), caption="Detected Image", use_column_width=True)
+            # Show result image
+            st.image(r.plot(), caption="🎯 Detection Result", use_column_width=True)
+
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
